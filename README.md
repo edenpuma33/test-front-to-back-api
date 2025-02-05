@@ -469,16 +469,20 @@ module.exports = prisma;
 
 ## Step 15 Update auth-controllers
 
-import bcrypt
+import bcryptjs
 
-update function register
+import jsonwebtoken
 
-check email
+update function register & function login
+
+### auth.controllers.js
+
 
 ```js
 const prisma = require("../configs/prisma");
 const createError = require("../utils/createError")
 const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
 
 exports.register = async(req, res, next) => {
     try {
@@ -510,19 +514,176 @@ exports.register = async(req, res, next) => {
                 password: hashedPassword
             }
         })
+        // Step 6 Response
         res.json({message: "hello register"});
     } catch (error) {
         console.log("Step 2 Catch")
         next(error);
     }
-        // Step 6 Response
 }
 
-exports.login = (req, res, next) => {
+exports.login = async(req, res, next) => {
     try {
-        res.json({message: "hello login"})
+        // Step 1 req.body
+        const { email, password } = req.body;
+        
+        // Step 2 check email and password
+        const profile = await prisma.profile.findFirst({
+            where:{
+                email,
+            }
+        })
+        if(!profile){
+            return createError(400, "Email or Password is invalid")
+        }
+
+        const isMatch = bcrypt.compareSync(password,profile.password)
+        
+        if(!isMatch){
+            return createError(400, "Email or Password is invalid")
+        }
+        // Step 3 Generate token
+        const payload = {
+            id:profile.id,
+            email:profile.email,
+            firstname:profile.firstname,
+            lastname:profile.lastname,
+            role:profile.role,
+        }
+        
+        const token = jwt.sign(payload, process.env.SECRET,{
+            expiresIn: "1d"
+        })
+        // Step 4 Response
+        res.json({
+            message: "Login Success",
+            payload: payload,
+            token: token
+        })
     } catch (error) {
         next(error);
     }
 }
+```
+
+## Step 16 Add secret in .env
+
+add SECRET
+### .env
+
+```json
+# Environment variables declared in this file are automatically made available to Prisma.
+# See the documentation for more detail: https://pris.ly/d/prisma-schema#accessing-environment-variables-from-the-schema
+
+# Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.
+# See the documentation for all the connection string options: https://pris.ly/d/connection-strings
+
+SECRET = cc19_workhard
+DATABASE_URL="mysql://root:puma32442@localhost:3306/landmark"
+```
+
+## Step 17 update auth-route.js
+/routes/auth-route.js
+### auth-routh.js
+
+```js
+const express = require("express");
+const router = express.Router();
+const authControllers = require("../controllers/auth-controllers")
+const{ validateWithZod, registerSchema, loginSchema, currentUser } = require("../middlewares/validator")
+
+// @ENDPOINT http://localhost:9999/api/register
+router.post('/register',validateWithZod(registerSchema), authControllers.register);
+
+router.post("/login",validateWithZod(loginSchema), authControllers.login);
+
+router.get("/current-user", authControllers.currentUser)
+
+// export
+module.exports = router
+```
+
+## Step 18 Create user-controllers.js
+/controllers/user-controllers.js
+### user-controllers.js
+```js
+// 1. List all users
+// 2. Update Role
+// 3. Delete User
+
+exports.listUsers = async(req, res, next) => {
+    try {
+        res.json({message: "Hello, List true"})
+    } catch (error) {
+        next(error)
+    }
+};
+
+exports.updateRole = async(req, res , next) => {
+    try {
+        res.json({message: "Hello, Update Role"})
+    } catch (error) {
+        next(error)
+    }
+}
+
+exports.deleteUser = async(req, res, next) => {
+    try {
+        res.json({message: "Hello, Delete User"})
+    } catch (error) {
+        next(error)
+    }
+}
+```
+
+
+## Step 19 Create user-route.js
+/routes/user-route.js
+### user-route.js
+```js
+const express = require("express")
+const router = express.Router()
+const userController = require("../controllers/user-controllers")
+
+// @ENDPOINT http://localhost:999/api/users 
+router.get('/users',userController.listUsers)
+
+router.patch('/user/update-role',userController.updateRole)
+
+router.delete('/user/:id',userController.deleteUser)
+
+module.exports = router
+```
+
+## Step 20 Update index.js
+
+Adding Routing
+### index.js
+```js
+// Import
+const express = require('express');
+const cors = require("cors")
+const morgan = require("morgan")
+const handleErrors = require("./middlewares/error")
+
+// Routing
+const authRouter = require('./routes/auth-route')
+const userRouter = require('./routes/user-route')
+const app = express();
+
+// Middlewares
+app.use(cors()); // Allows cross domain
+app.use(morgan("dev")); // Show log terminal
+app.use(express.json()); // For read json
+
+// Routing
+app.use("/api", authRouter);
+app.use("/api", userRouter);
+
+// Handle errors
+app.use(handleErrors)
+
+// Start Server
+const PORT = 9999;
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`))
 ```

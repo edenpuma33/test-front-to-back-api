@@ -6,7 +6,7 @@ const handleErrors = require("./middlewares/error")
 
 // Routing
 const authRouter = require('./routes/auth-route')
-
+const userRouter = require('./routes/user-route')
 const app = express();
 
 // Middlewares
@@ -16,6 +16,7 @@ app.use(express.json()); // For read json
 
 // Routing
 app.use("/api", authRouter);
+app.use("/api", userRouter);
 
 // Handle errors
 app.use(handleErrors)
