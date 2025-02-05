@@ -251,7 +251,6 @@ exports.register = (req, res, next) => {
 
 exports.login = (req, res, next) => {
     try {
-        console.log(xxx)
         res.json({message: "hello login"})
     } catch (error) {
         next(error);
@@ -259,7 +258,7 @@ exports.login = (req, res, next) => {
 }
 ```
 
-## Step 8 Use zod
+## Step 9 Use zod
 import zod in /routes/auth-route.js
 
 create registerSchema,loginSchema
@@ -315,7 +314,7 @@ router.post("/login",validateWithZod(loginSchema), authControllers.login);
 module.exports = router
 ```
 
-## Step 9 Validate with zod
+## Step 10 Validate with zod
 /middlewares/validator.js
 
 move root code from /routes/auth-route.js ==> /middlewares/validator.js
@@ -370,4 +369,87 @@ router.post("/login",validateWithZod(loginSchema), authControllers.login);
 
 // export
 module.exports = router
+```
+
+## Step 11 Change .env and schema.prisma
+
+### .env
+
+change DATABASE_URL
+
+postgresql to mysql
+```json
+# Environment variables declared in this file are automatically made available to Prisma.
+# See the documentation for more detail: https://pris.ly/d/prisma-schema#accessing-environment-variables-from-the-schema
+
+# Prisma supports the native connection string format for PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.
+# See the documentation for all the connection string options: https://pris.ly/d/connection-strings
+
+DATABASE_URL="mysql://root:puma32442@localhost:3306/landmark"
+```
+
+
+### schema.prisma
+change postgresql to mysql
+```json
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+```
+
+## Step 12 add data model in schema.prisma
+### schema.prisma
+```json
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        Int      @id @default(autoincrement())
+  email     String
+  firstname String
+  lastname  String
+  role      Role     @default(USER)
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+## Step 13 send schema.rpisma to mysql
+### interminal
+
+```json
+npx prisma db push
+```
+or 
+```json
+npx prisma migrate dev --name init
 ```

@@ -26,7 +26,6 @@ exports.register = (req, res, next) => {
 
 exports.login = (req, res, next) => {
     try {
-        console.log(xxx)
         res.json({message: "hello login"})
     } catch (error) {
         next(error);
