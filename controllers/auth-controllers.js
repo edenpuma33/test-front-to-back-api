@@ -34,7 +34,7 @@ exports.register = async(req, res, next) => {
             }
         })
         // Step 6 Response
-        res.json({message: "hello register"});
+        res.json({message: "Register Success"});
     } catch (error) {
         console.log("Step 2 Catch")
         next(error);
@@ -53,15 +53,17 @@ exports.login = async(req, res, next) => {
             }
         })
         if(!profile){
-            return createError(400, "Email or Password is invalid")
+            return createError(400, "Email or Password is invalid!!!")
         }
-
+        
         const isMatch = bcrypt.compareSync(password,profile.password)
         
         if(!isMatch){
-            return createError(400, "Email or Password is invalid")
+            return createError(400, "Email or Password is invalid!!!")
         }
+
         // Step 3 Generate token
+        // ส่งไป frontend อย่าส่งอะไรที่เป็นความลับ
         const payload = {
             id:profile.id,
             email:profile.email,
@@ -73,6 +75,7 @@ exports.login = async(req, res, next) => {
         const token = jwt.sign(payload, process.env.SECRET,{
             expiresIn: "1d",
         })
+        
         // Step 4 Response
         res.json({
             message: "Login Success",

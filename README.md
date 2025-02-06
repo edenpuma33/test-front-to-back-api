@@ -7,6 +7,7 @@ npm init -y
 ```
 ## Step 2 install package
 ### in Terminal
+import library
 ```bash
 npm install express nodemon cors morgan bcryptjs jsonwebtoken zod prisma
 ```
@@ -686,4 +687,146 @@ app.use(handleErrors)
 // Start Server
 const PORT = 9999;
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`))
+```
+
+## Step 21 Create auth-middleware.js
+/middlewares/auth-middleware.js
+
+### auth-middleware.js
+```js
+const createError = require("../utils/createError")
+const jwt = require("jsonwebtoken");
+exports.authCheck = async (req,res,next) =>{
+    try {
+        // รับ header จาก client
+        const authorization = req.headers.authorization;
+        // Check ถ้าไม่มี Token
+        if(!authorization){
+            return createError(400,"Missing Token!!!")
+        }
+        // Bearer token........... ใช้ split แบ่งด้วยช่องว่าง
+        const token = authorization.split(" ")[1];
+        // Verify token
+        jwt.verify(token,process.env.SECRET,(err,decode)=>{
+            if(err){
+                return createError(401,"Unauthorized !!")
+            }
+            // สร้าง property user = decode ( ข้อมูล user จาก token bn )
+            req.user = decode
+            next();
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+```
+
+## Step 22 Update auth-route.js
+/routes/auth-route.js
+
+import middlewares ---> authCheck
+#### auth-route.js
+```js
+const express = require("express");
+const router = express.Router();
+const authControllers = require("../controllers/auth-controllers")
+
+// Middlewares
+const { authCheck } = require("../middlewares/auth-middleware")
+const { 
+    validateWithZod, 
+    registerSchema, 
+    loginSchema
+} = require("../middlewares/validator")
+
+// @ENDPOINT http://localhost:9999/api/register
+router.post('/register',validateWithZod(registerSchema), authControllers.register);
+
+router.post("/login",validateWithZod(loginSchema), authControllers.login);
+
+router.get("/current-user", authCheck, authControllers.currentUser)
+
+// export
+module.exports = router
+```
+
+## Step 23 Update user-routes.js
+/routes/user-routes.js
+
+import Middleware authcheck
+### user-routes.js
+```js
+const express = require("express")
+const router = express.Router()
+// Import controller
+const userController = require("../controllers/user-controllers")
+// Import Middleware
+const { authCheck } = require("../middlewares/auth-middleware")
+
+// @ENDPOINT http://localhost:999/api/users 
+router.get('/users',authCheck,userController.listUsers)
+
+router.patch('/user/update-role',authCheck,userController.updateRole)
+
+router.delete('/user/:id',authCheck,userController.deleteUser)
+
+module.exports = router
+```
+
+## Step 24 Update user-controllers.js
+/controllers/user-controllers.js
+### user-controllers.js
+```js
+const prisma = require("../configs/prisma");
+// 1. List all users
+// 2. Update Role
+// 3. Delete User
+
+exports.listUsers = async (req, res, next) => {
+  try {
+    const users = await prisma.profile.findMany({
+      omit: {
+        password: true,
+      },
+    });
+    // console.log(users)
+    res.json({ message: "Hello, List true", result: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateRole = async (req, res, next) => {
+  try {
+    const { id, role } = req.body;
+    console.log(id, role)
+
+    const updated = await prisma.profile.update({
+        where:{
+            id: Number(id)
+        },
+        data:{
+            role
+        }
+    })
+    res.json({ message: "Update Success" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const deleted = await prisma.profile.delete({
+        where: {
+            id: Number(id),
+        }
+    });
+    console.log(id)
+    res.json({ message: "Hello, Delete User" });
+  } catch (error) {
+    next(error);
+  }
+};
 ```
